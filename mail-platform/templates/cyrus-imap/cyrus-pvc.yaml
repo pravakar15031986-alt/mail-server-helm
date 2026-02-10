@@ -1,0 +1,29 @@
+{{- if and (.Values.cyrusImap.enabled) (.Values.cyrusImap.persistence.enabled) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-cyrus-mail-data
+  labels:
+    {{- include "mail-platform.cyrus.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.cyrusImap.persistence.accessMode }}
+  storageClassName: {{ .Values.cyrusImap.persistence.storageClass | default (include "mail-platform.storageClass" .) }}
+  resources:
+    requests:
+      storage: {{ .Values.cyrusImap.persistence.size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-cyrus-mail-metadata
+  labels:
+    {{- include "mail-platform.cyrus.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.cyrusImap.persistence.accessMode }}
+  storageClassName: {{ .Values.cyrusImap.persistence.storageClass | default (include "mail-platform.storageClass" .) }}
+  resources:
+    requests:
+      storage: 5Gi
+{{- end }}
