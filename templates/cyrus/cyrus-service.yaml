@@ -1,0 +1,51 @@
+{{- if .Values.cyrusImap.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-cyrus-imap
+  labels:
+    {{- include "mail-platform.cyrus.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.cyrusImap.service.type }}
+  clusterIP: None  # Headless service for StatefulSet
+  ports:
+  - port: {{ .Values.cyrusImap.service.imapPort }}
+    targetPort: imap
+    protocol: TCP
+    name: imap
+  - port: {{ .Values.cyrusImap.service.imapsPort }}
+    targetPort: imaps
+    protocol: TCP
+    name: imaps
+  - port: {{ .Values.cyrusImap.service.lmtpPort }}
+    targetPort: lmtp
+    protocol: TCP
+    name: lmtp
+  - port: {{ .Values.cyrusImap.service.sieverPort }}
+    targetPort: sieve
+    protocol: TCP
+    name: sieve
+  selector:
+    {{- include "mail-platform.cyrus.selectorLabels" . | nindent 4 }}
+---
+# Client service for external access
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-cyrus-imap-client
+  labels:
+    {{- include "mail-platform.cyrus.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: {{ .Values.cyrusImap.service.imapPort }}
+    targetPort: imap
+    protocol: TCP
+    name: imap
+  - port: {{ .Values.cyrusImap.service.imapsPort }}
+    targetPort: imaps
+    protocol: TCP
+    name: imaps
+  selector:
+    {{- include "mail-platform.cyrus.selectorLabels" . | nindent 4 }}
+{{- end }}

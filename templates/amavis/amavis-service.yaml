@@ -1,0 +1,21 @@
+{{- if .Values.amavis.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-amavis
+  labels:
+    {{- include "mail-platform.amavis.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.amavis.service.type }}
+  ports:
+  - port: {{ .Values.amavis.service.port }}
+    targetPort: amavis-in
+    protocol: TCP
+    name: amavis-in
+  - port: {{ .Values.amavis.service.outPort }}
+    targetPort: amavis-out
+    protocol: TCP
+    name: amavis-out
+  selector:
+    {{- include "mail-platform.amavis.selectorLabels" . | nindent 4 }}
+{{- end }}

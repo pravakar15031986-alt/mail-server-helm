@@ -1,0 +1,215 @@
+# Default values for mail-platform
+global:
+  domain: example.com
+  imagePullPolicy: IfNotPresent
+  storageClass: "standard"
+
+# Postfix MTA (Stateless)
+postfix:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: docker.io/postfix
+    tag: "latest"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  service:
+    type: LoadBalancer
+    smtpPort: 25
+    submissionPort: 587
+  config:
+    myhostname: mail.example.com
+    mydomain: example.com
+    mynetworks: "127.0.0.0/8 10.0.0.0/8"
+    relayhost: ""
+    virtual_mailbox_domains: example.com
+    virtual_transport: "lmtp:cyrus-imap:24"
+
+# Cyrus IMAP (Stateful)
+cyrusImap:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: docker.io/cyrus-imap
+    tag: "3.6"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "300m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  persistence:
+    enabled: true
+    storageClass: "standard"
+    accessMode: ReadWriteOnce
+    size: 50Gi
+    mailDataPath: /var/spool/imap
+    mailMetadataPath: /var/lib/imap
+  service:
+    type: ClusterIP
+    imapPort: 143
+    imapsPort: 993
+    lmtpPort: 24
+    sieverPort: 4190
+
+# Amavis (Stateless)
+amavis:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: docker.io/amavis
+    tag: "latest"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "300m"
+    limits:
+      memory: "1Gi"
+      cpu: "800m"
+  service:
+    type: ClusterIP
+    port: 10024
+    outPort: 10025
+  config:
+    maxServers: 5
+    spam_tag_level: 2.0
+    spam_kill_level: 6.0
+
+# SpamAssassin (Stateless)
+spamassassin:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: docker.io/spamassassin
+    tag: "latest"
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "300m"
+    limits:
+      memory: "1Gi"
+      cpu: "800m"
+  service:
+    type: ClusterIP
+    port: 783
+  config:
+    required_score: 5.0
+    use_bayes: true
+    bayes_auto_learn: true
+
+# ClamAV (Stateful for virus definitions)
+clamav:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: docker.io/clamav/clamav
+    tag: "latest"
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "500m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+  persistence:
+    enabled: true
+    storageClass: "standard"
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    dbPath: /var/lib/clamav
+  service:
+    type: ClusterIP
+    port: 3310
+  config:
+    freshclamUpdates: 24
+
+# LDAP Directory (Stateful)
+ldap:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: docker.io/osixia/openldap
+    tag: "1.5.0"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  persistence:
+    enabled: true
+    storageClass: "standard"
+    accessMode: ReadWriteOnce
+    size: 5Gi
+    dataPath: /var/lib/ldap
+    configPath: /etc/ldap/slapd.d
+  service:
+    type: ClusterIP
+    ldapPort: 389
+    ldapsPort: 636
+  config:
+    organisation: "Example Inc"
+    domain: example.com
+    adminPassword: "changeme"
+    baseDN: "dc=example,dc=com"
+
+# Roundcube Webmail (Stateless)
+roundcube:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: docker.io/roundcube/roundcubemail
+    tag: "latest"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: webmail.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: roundcube-tls
+        hosts:
+          - webmail.example.com
+  config:
+    defaultHost: ssl://cyrus-imap
+    defaultPort: 993
+    smtpServer: tls://postfix
+    smtpPort: 587
+    dbType: mysql
+    dbHost: mysql.database.svc.cluster.local
+    dbName: roundcube
+    dbUser: roundcube
+
+# Mail Ingress (for IMAP/SMTP external access)
+mailIngress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+  imaps:
+    host: imap.example.com
+    tlsSecretName: imap-tls
+  smtp:
+    host: smtp.example.com
+    tlsSecretName: smtp-tls

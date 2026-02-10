@@ -1,0 +1,75 @@
+{{- if .Values.postfix.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-postfix
+  labels:
+    {{- include "mail-platform.postfix.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.postfix.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mail-platform.postfix.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/postfix/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/postfix/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "mail-platform.postfix.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: postfix
+        image: "{{ .Values.postfix.image.repository }}:{{ .Values.postfix.image.tag }}"
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - name: smtp
+          containerPort: 25
+          protocol: TCP
+        - name: submission
+          containerPort: 587
+          protocol: TCP
+        env:
+        - name: POSTFIX_MYHOSTNAME
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mail-platform.fullname" . }}-postfix-config
+              key: myhostname
+        - name: POSTFIX_MYDOMAIN
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mail-platform.fullname" . }}-postfix-config
+              key: mydomain
+        - name: POSTFIX_MYNETWORKS
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "mail-platform.fullname" . }}-postfix-config
+              key: mynetworks
+        volumeMounts:
+        - name: postfix-config
+          mountPath: /etc/postfix/main.cf
+          subPath: main.cf
+        - name: postfix-config
+          mountPath: /etc/postfix/master.cf
+          subPath: master.cf
+        - name: spool
+          mountPath: /var/spool/postfix
+        resources:
+          {{- toYaml .Values.postfix.resources | nindent 10 }}
+        livenessProbe:
+          tcpSocket:
+            port: smtp
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: smtp
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: postfix-config
+        configMap:
+          name: {{ include "mail-platform.fullname" . }}-postfix-config
+      - name: spool
+        emptyDir: {}
+{{- end }}

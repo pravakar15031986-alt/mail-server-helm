@@ -1,0 +1,65 @@
+{{- if .Values.mailIngress.enabled }}
+# TCP Ingress for IMAPS (993)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-imaps
+  labels:
+    {{- include "mail-platform.labels" . | nindent 4 }}
+  {{- with .Values.mailIngress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+    nginx.ingress.kubernetes.io/backend-protocol: "TCP"
+  {{- end }}
+spec:
+  {{- if .Values.mailIngress.className }}
+  ingressClassName: {{ .Values.mailIngress.className }}
+  {{- end }}
+  tls:
+  - hosts:
+    - {{ .Values.mailIngress.imaps.host }}
+    secretName: {{ .Values.mailIngress.imaps.tlsSecretName }}
+  rules:
+  - host: {{ .Values.mailIngress.imaps.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "mail-platform.fullname" . }}-cyrus-imap-client
+            port:
+              number: 993
+---
+# TCP Ingress for Submission (587)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-smtp
+  labels:
+    {{- include "mail-platform.labels" . | nindent 4 }}
+  {{- with .Values.mailIngress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+    nginx.ingress.kubernetes.io/backend-protocol: "TCP"
+  {{- end }}
+spec:
+  {{- if .Values.mailIngress.className }}
+  ingressClassName: {{ .Values.mailIngress.className }}
+  {{- end }}
+  tls:
+  - hosts:
+    - {{ .Values.mailIngress.smtp.host }}
+    secretName: {{ .Values.mailIngress.smtp.tlsSecretName }}
+  rules:
+  - host: {{ .Values.mailIngress.smtp.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "mail-platform.fullname" . }}-postfix
+            port:
+              number: 587
+{{- end }}

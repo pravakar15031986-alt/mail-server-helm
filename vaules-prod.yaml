@@ -1,0 +1,102 @@
+# Production values for mail-platform
+global:
+  domain: mail.production.com
+  storageClass: "fast-ssd"
+
+postfix:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+
+cyrusImap:
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2000m"
+    limits:
+      memory: "8Gi"
+      cpu: "4000m"
+  persistence:
+    storageClass: "fast-ssd"
+    size: 500Gi
+
+amavis:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1500m"
+
+spamassassin:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1500m"
+
+clamav:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "1000m"
+    limits:
+      memory: "8Gi"
+      cpu: "3000m"
+  persistence:
+    storageClass: "fast-ssd"
+    size: 20Gi
+
+ldap:
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  persistence:
+    storageClass: "fast-ssd"
+    size: 10Gi
+
+roundcube:
+  replicaCount: 3
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  ingress:
+    hosts:
+      - host: webmail.production.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: roundcube-prod-tls
+        hosts:
+          - webmail.production.com
+
+mailIngress:
+  imaps:
+    host: imap.production.com
+  smtp:
+    host: smtp.production.com

@@ -1,0 +1,100 @@
+{{- if .Values.ldap.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-ldap
+  labels:
+    {{- include "mail-platform.ldap.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "mail-platform.fullname" . }}-ldap
+  replicas: {{ .Values.ldap.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mail-platform.ldap.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mail-platform.ldap.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: ldap
+        image: "{{ .Values.ldap.image.repository }}:{{ .Values.ldap.image.tag }}"
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - name: ldap
+          containerPort: 389
+          protocol: TCP
+        - name: ldaps
+          containerPort: 636
+          protocol: TCP
+        env:
+        - name: LDAP_ORGANISATION
+          value: {{ .Values.ldap.config.organisation | quote }}
+        - name: LDAP_DOMAIN
+          value: {{ .Values.ldap.config.domain | quote }}
+        - name: LDAP_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "mail-platform.fullname" . }}-ldap-secret
+              key: admin-password
+        - name: LDAP_CONFIG_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "mail-platform.fullname" . }}-ldap-secret
+              key: config-password
+        - name: LDAP_BASE_DN
+          value: {{ .Values.ldap.config.baseDN | quote }}
+        - name: LDAP_TLS
+          value: "true"
+        - name: LDAP_TLS_VERIFY_CLIENT
+          value: "try"
+        volumeMounts:
+        - name: ldap-data
+          mountPath: {{ .Values.ldap.persistence.dataPath }}
+        - name: ldap-config
+          mountPath: {{ .Values.ldap.persistence.configPath }}
+        resources:
+          {{- toYaml .Values.ldap.resources | nindent 10 }}
+        livenessProbe:
+          tcpSocket:
+            port: ldap
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: ldap
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      {{- if not .Values.ldap.persistence.enabled }}
+      volumes:
+      - name: ldap-data
+        emptyDir: {}
+      - name: ldap-config
+        emptyDir: {}
+      {{- end }}
+  {{- if .Values.ldap.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: ldap-data
+      labels:
+        {{- include "mail-platform.ldap.labels" . | nindent 8 }}
+    spec:
+      accessModes:
+        - {{ .Values.ldap.persistence.accessMode }}
+      storageClassName: {{ .Values.ldap.persistence.storageClass | default (include "mail-platform.storageClass" .) }}
+      resources:
+        requests:
+          storage: {{ .Values.ldap.persistence.size }}
+  - metadata:
+      name: ldap-config
+      labels:
+        {{- include "mail-platform.ldap.labels" . | nindent 8 }}
+    spec:
+      accessModes:
+        - {{ .Values.ldap.persistence.accessMode }}
+      storageClassName: {{ .Values.ldap.persistence.storageClass | default (include "mail-platform.storageClass" .) }}
+      resources:
+        requests:
+          storage: 1Gi
+  {{- end }}
+{{- end }}

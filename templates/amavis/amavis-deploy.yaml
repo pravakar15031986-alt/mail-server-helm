@@ -1,0 +1,62 @@
+{{- if .Values.amavis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-amavis
+  labels:
+    {{- include "mail-platform.amavis.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.amavis.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mail-platform.amavis.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mail-platform.amavis.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: amavis
+        image: "{{ .Values.amavis.image.repository }}:{{ .Values.amavis.image.tag }}"
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - name: amavis-in
+          containerPort: 10024
+          protocol: TCP
+        - name: amavis-out
+          containerPort: 10025
+          protocol: TCP
+        env:
+        - name: MAX_SERVERS
+          value: {{ .Values.amavis.config.maxServers | quote }}
+        - name: SA_TAG_LEVEL_DEFLT
+          value: {{ .Values.amavis.config.spam_tag_level | quote }}
+        - name: SA_KILL_LEVEL_DEFLT
+          value: {{ .Values.amavis.config.spam_kill_level | quote }}
+        - name: CLAMD_HOST
+          value: "{{ include "mail-platform.fullname" . }}-clamav:3310"
+        - name: SPAMASSASSIN_HOST
+          value: "{{ include "mail-platform.fullname" . }}-spamassassin:783"
+        volumeMounts:
+        - name: amavis-tmp
+          mountPath: /var/amavis/tmp
+        - name: amavis-db
+          mountPath: /var/amavis/db
+        resources:
+          {{- toYaml .Values.amavis.resources | nindent 10 }}
+        livenessProbe:
+          tcpSocket:
+            port: amavis-in
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: amavis-in
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: amavis-tmp
+        emptyDir: {}
+      - name: amavis-db
+        emptyDir: {}
+{{- end }}

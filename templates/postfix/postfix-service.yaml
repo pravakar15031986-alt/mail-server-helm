@@ -1,0 +1,21 @@
+{{- if .Values.postfix.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-postfix
+  labels:
+    {{- include "mail-platform.postfix.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.postfix.service.type }}
+  ports:
+  - port: {{ .Values.postfix.service.smtpPort }}
+    targetPort: smtp
+    protocol: TCP
+    name: smtp
+  - port: {{ .Values.postfix.service.submissionPort }}
+    targetPort: submission
+    protocol: TCP
+    name: submission
+  selector:
+    {{- include "mail-platform.postfix.selectorLabels" . | nindent 4 }}
+{{- end }}

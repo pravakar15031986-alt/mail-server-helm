@@ -1,0 +1,64 @@
+{{- if .Values.clamav.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-clamav
+  labels:
+    {{- include "mail-platform.clamav.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "mail-platform.fullname" . }}-clamav
+  replicas: {{ .Values.clamav.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mail-platform.clamav.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mail-platform.clamav.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: clamav
+        image: "{{ .Values.clamav.image.repository }}:{{ .Values.clamav.image.tag }}"
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - name: clamd
+          containerPort: 3310
+          protocol: TCP
+        env:
+        - name: FRESHCLAM_CHECKS
+          value: {{ .Values.clamav.config.freshclamUpdates | quote }}
+        volumeMounts:
+        - name: clamav-db
+          mountPath: {{ .Values.clamav.persistence.dbPath }}
+        resources:
+          {{- toYaml .Values.clamav.resources | nindent 10 }}
+        livenessProbe:
+          tcpSocket:
+            port: clamd
+          initialDelaySeconds: 120
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: clamd
+          initialDelaySeconds: 60
+          periodSeconds: 10
+      {{- if not .Values.clamav.persistence.enabled }}
+      volumes:
+      - name: clamav-db
+        emptyDir: {}
+      {{- end }}
+  {{- if .Values.clamav.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: clamav-db
+      labels:
+        {{- include "mail-platform.clamav.labels" . | nindent 8 }}
+    spec:
+      accessModes:
+        - {{ .Values.clamav.persistence.accessMode }}
+      storageClassName: {{ .Values.clamav.persistence.storageClass | default (include "mail-platform.storageClass" .) }}
+      resources:
+        requests:
+          storage: {{ .Values.clamav.persistence.size }}
+  {{- end }}
+{{- end }}

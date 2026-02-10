@@ -1,0 +1,33 @@
+{{- if and .Values.ldap.enabled .Values.ldap.persistence.enabled }}
+# Note: This file is for reference only when using manual PVC creation
+# When using StatefulSet with volumeClaimTemplates, PVCs are created automatically
+# Uncomment and use this only if you need to pre-create PVCs manually
+
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: {{ include "mail-platform.fullname" . }}-ldap-data
+#   labels:
+#     {{- include "mail-platform.ldap.labels" . | nindent 4 }}
+# spec:
+#   accessModes:
+#     - {{ .Values.ldap.persistence.accessMode }}
+#   storageClassName: {{ .Values.ldap.persistence.storageClass | default (include "mail-platform.storageClass" .) }}
+#   resources:
+#     requests:
+#       storage: {{ .Values.ldap.persistence.size }}
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: {{ include "mail-platform.fullname" . }}-ldap-config
+#   labels:
+#     {{- include "mail-platform.ldap.labels" . | nindent 4 }}
+# spec:
+#   accessModes:
+#     - {{ .Values.ldap.persistence.accessMode }}
+#   storageClassName: {{ .Values.ldap.persistence.storageClass | default (include "mail-platform.storageClass" .) }}
+#   resources:
+#     requests:
+#       storage: 1Gi
+{{- end }}

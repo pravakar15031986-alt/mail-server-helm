@@ -1,0 +1,68 @@
+{{- if .Values.roundcube.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mail-platform.fullname" . }}-roundcube
+  labels:
+    {{- include "mail-platform.roundcube.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.roundcube.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mail-platform.roundcube.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mail-platform.roundcube.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: roundcube
+        image: "{{ .Values.roundcube.image.repository }}:{{ .Values.roundcube.image.tag }}"
+        imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        env:
+        - name: ROUNDCUBEMAIL_DEFAULT_HOST
+          value: {{ .Values.roundcube.config.defaultHost | quote }}
+        - name: ROUNDCUBEMAIL_DEFAULT_PORT
+          value: {{ .Values.roundcube.config.defaultPort | quote }}
+        - name: ROUNDCUBEMAIL_SMTP_SERVER
+          value: {{ .Values.roundcube.config.smtpServer | quote }}
+        - name: ROUNDCUBEMAIL_SMTP_PORT
+          value: {{ .Values.roundcube.config.smtpPort | quote }}
+        - name: ROUNDCUBEMAIL_DB_TYPE
+          value: {{ .Values.roundcube.config.dbType | quote }}
+        - name: ROUNDCUBEMAIL_DB_HOST
+          value: {{ .Values.roundcube.config.dbHost | quote }}
+        - name: ROUNDCUBEMAIL_DB_NAME
+          value: {{ .Values.roundcube.config.dbName | quote }}
+        - name: ROUNDCUBEMAIL_DB_USER
+          value: {{ .Values.roundcube.config.dbUser | quote }}
+        - name: ROUNDCUBEMAIL_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "mail-platform.fullname" . }}-roundcube-secret
+              key: db-password
+        volumeMounts:
+        - name: roundcube-www
+          mountPath: /var/www/html
+        resources:
+          {{- toYaml .Values.roundcube.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: roundcube-www
+        emptyDir: {}
+{{- end }}

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: mail-platform
+description: A comprehensive email platform with Postfix, Cyrus IMAP, Anti-spam/virus, and Webmail
+type: application
+version: 1.0.0
+appVersion: "1.0"
+keywords:
+  - mail
+  - email
+  - postfix
+  - imap
+  - cyrus
+  - roundcube
+maintainers:
+  - name: Platform Team
+    email: platform@example.com
